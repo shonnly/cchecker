@@ -17,23 +17,30 @@ func main() {
 	remoteDirs = dirs[1:]
 
 	greet()
-	validate()
+	runValidations()
 	printResults()
 }
 
-func validate() {
+func runValidations() {
 	basefiles, err := ioutil.ReadDir(baseDir)
 	handleError(err)
 
 	for _, file := range basefiles {
-		for _, remoteDir := range remoteDirs {
-			isConsistent := isConsistent(file, remoteDir)
-			if !isConsistent {
-				difMsg := "File " + filepath.Join(baseDir, file.Name()) + " inconsistent with " + remoteDir
-				inconsistencies = append(inconsistencies, difMsg)
-			}
+		processFile(file)
+	}
+}
+
+func processFile(file os.FileInfo) {
+	for _, remoteDir := range remoteDirs {
+		if !isConsistent(file, remoteDir) {
+			logInconsistency(file, remoteDir)
 		}
 	}
+}
+
+func logInconsistency(file os.FileInfo, remoteDir string) {
+	msg := "File " + filepath.Join(baseDir, file.Name()) + " inconsistent with " + remoteDir
+	inconsistencies = append(inconsistencies, msg)
 }
 
 func isConsistent(baseFile os.FileInfo, remoteDir string) bool {
