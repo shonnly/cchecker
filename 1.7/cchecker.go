@@ -9,6 +9,7 @@ import (
 )
 
 var (
+	processedFiles      = map[string]bool{}
 	inconsistencies     []string
 	totalNumberOfChecks int
 )
@@ -29,23 +30,29 @@ func main() {
 }
 
 func runValidations(baseDir string, dirs []string) {
-
 	basefiles, err := ioutil.ReadDir(baseDir)
 	handleError(err)
 
 	for _, file := range basefiles {
 		processFile(file, baseDir, dirs)
+		processedFiles[file.Name()] = true
 	}
 }
 
 func processFile(file os.FileInfo, baseDir string, dirs []string) {
 	for _, remoteDir := range dirs {
-		if !sameDirectory(baseDir, remoteDir) {
-			if !isConsistent(file, remoteDir) {
-				logInconsistency(file, baseDir, remoteDir)
-			}
+		if isProcessed(file.Name()) || sameDirectory(baseDir, remoteDir) {
+			continue
+		}
+
+		if !isConsistent(file, remoteDir) {
+			logInconsistency(file, baseDir, remoteDir)
 		}
 	}
+}
+
+func isProcessed(fileName string) bool {
+	return processedFiles[fileName]
 }
 
 func sameDirectory(dir1 string, dir2 string) bool {
