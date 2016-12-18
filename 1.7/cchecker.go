@@ -5,64 +5,88 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
-var baseDir string
-var remoteDirs []string
-var inconsistencies []string
+var (
+	inconsistencies     []string
+	totalNumberOfChecks int
+)
 
 func main() {
 	dirs := os.Args[1:]
-	baseDir = dirs[0]
-	remoteDirs = dirs[1:]
+	greet(dirs)
 
-	greet()
-	runValidations()
-	printResults()
+	for _, baseDir := range dirs {
+		println()
+		println("--------------------Base directory is set to " + baseDir + "---------------------")
+		runValidations(baseDir, dirs)
+		printResults()
+		resetResults()
+	}
+
+	printTotalNumberOfCompares()
 }
 
-func runValidations() {
+func runValidations(baseDir string, dirs []string) {
+
 	basefiles, err := ioutil.ReadDir(baseDir)
 	handleError(err)
 
 	for _, file := range basefiles {
-		processFile(file)
+		processFile(file, baseDir, dirs)
 	}
 }
 
-func processFile(file os.FileInfo) {
-	for _, remoteDir := range remoteDirs {
-		if !isConsistent(file, remoteDir) {
-			logInconsistency(file, remoteDir)
+func processFile(file os.FileInfo, baseDir string, dirs []string) {
+	for _, remoteDir := range dirs {
+		if !sameDirectory(baseDir, remoteDir) {
+			if !isConsistent(file, remoteDir) {
+				logInconsistency(file, baseDir, remoteDir)
+			}
 		}
 	}
 }
 
-func logInconsistency(file os.FileInfo, remoteDir string) {
+func sameDirectory(dir1 string, dir2 string) bool {
+	return strings.Compare(dir1, dir2) == 0
+}
+
+func logInconsistency(file os.FileInfo, baseDir string, remoteDir string) {
 	msg := "File " + filepath.Join(baseDir, file.Name()) + " inconsistent with " + remoteDir
 	inconsistencies = append(inconsistencies, msg)
 }
 
 func isConsistent(baseFile os.FileInfo, remoteDir string) bool {
+	totalNumberOfChecks++
 	if _, err := os.Stat(filepath.Join(remoteDir, baseFile.Name())); err != nil {
 		return false
 	}
 	return true
 }
 
-func greet() {
-	fmt.Println("Running Cosistency Check:")
-	println("Base dir - ", baseDir)
+func greet(dirs []string) {
+	fmt.Println("Running cosistency check for:")
 
-	for i, dir := range remoteDirs {
-		fmt.Printf("Remote %d - %s\n", i, dir)
+	for i, dir := range dirs {
+		fmt.Printf("Dir %d - %s\n", i, dir)
 	}
+	println()
 }
 
 func printResults() {
 	for _, dif := range inconsistencies {
 		fmt.Println(dif)
 	}
+}
+
+func printTotalNumberOfCompares() {
+	println()
+	fmt.Printf("Total number of checks performed: %d\n\n", totalNumberOfChecks)
+}
+
+func resetResults() {
+	inconsistencies = nil
 }
 
 func handleError(err error) {
